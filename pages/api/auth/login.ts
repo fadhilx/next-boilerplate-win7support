@@ -1,0 +1,39 @@
+// Next.js API route support: https://nextjs.org/docs/api-routes/introduction
+import type { NextApiRequest, NextApiResponse } from "next";
+import nextConnect from "next-connect";
+import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
+import { PrismaClient } from "@prisma/client";
+import { LoginFormDataType, LoginSuccessResponse } from "@/models/auth";
+import { serialize } from "cookie";
+const prisma = new PrismaClient();
+
+export default nextConnect<
+  NextApiRequest,
+  NextApiResponse<LoginSuccessResponse | { message: string; error?: any }>
+>().post(async (req, res) => {
+  const { username, password, remember } = req.body as LoginFormDataType;
+  if (!process.env.SECRET) return res.status(500);
+  try {
+    const user = await prisma.user.findUnique({
+      where: { username },
+    });
+    if (!user || !bcrypt.compareSync(password, user.password)) {
+      return res.status(401).json({ message: "Invalid credentials" });
+    }
+    const token = jwt.sign({ username: user.username }, process.env.SECRET, {
+      expiresIn: remember ? "7d" : "1h",
+    });
+    const cookie = serialize("token", token, {
+      httpOnly: true,
+      sameSite: "strict",
+      path: "/",
+      maxAge: (remember ? 60 * 60 * 24 * 7 : 60 * 60) * 1000,
+    });
+
+    res.setHeader("Set-Cookie", cookie);
+    res.status(200).json({ message: "Cookie set" });
+  } catch (error) {
+    res.status(500).json({ message: "Error logging in", error });
+  }
+});
