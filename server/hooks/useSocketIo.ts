@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { Socket, io } from "socket.io-client";
 import { DefaultEventsMap } from "socket.io/dist/typed-events";
 
-type SocketHookConfig<T> = {
+export type SocketHookConfig<T> = {
   withAuth?: boolean;
   on?: T;
 };
@@ -22,10 +22,12 @@ function useSocketIo<T extends Record<string, (...args: any[]) => void>>(
         ? (await axios.post("/api/auth/request-token")).data.token
         : undefined;
       const currentUrl = new URL(location.href);
+      const iourlString = `${currentUrl.protocol}//${
+        currentUrl.hostname
+      }:46371${namespace.startsWith("/") ? namespace : "/" + namespace}`;
+      console.log({ iourlString, namespace });
       const newSocket = io(
-        `${currentUrl.protocol}//${currentUrl.hostname}:46371${
-          namespace.startsWith("/") ? namespace : "/" + namespace
-        }`,
+        iourlString,
         withAuth
           ? {
               auth: { token },

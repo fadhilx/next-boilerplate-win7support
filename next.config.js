@@ -15,7 +15,7 @@ async function setup() {
   console.log("started")
   const user = await prisma.user.findFirst({})
 
-  if (!user) {
+  if (!user && process.env.NODE_ENV === "development") {
     if (!(await prompts({
       name: 'isTrue',
       type: 'confirm',
@@ -42,7 +42,8 @@ async function setup() {
           password: hashedPassword
         }
       })
-      return console.log("User has been created", user)
+      const { password, ...filtered } = user
+      return console.log("User has been created", filtered)
     }
     console.log("User has not been created, username or password missing")
   }
